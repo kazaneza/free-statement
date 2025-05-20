@@ -1,4 +1,3 @@
-```python
 import pyodbc
 from .config import get_settings
 
@@ -42,4 +41,3 @@ def init_db():
     finally:
         cursor.close()
         conn.close()
-```

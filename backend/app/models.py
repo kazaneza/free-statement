@@ -1,4 +1,3 @@
-```python
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -26,4 +25,3 @@ class ADUser(BaseModel):
     display_name: str
     email: Optional[str] = None
     department: Optional[str] = None
-```

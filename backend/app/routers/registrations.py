@@ -1,10 +1,7 @@
-```python
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException
+from typing import List
 from ..database import get_db_connection
-from ..models import (
-    Registration, RegistrationCreate, RegistrationResponse
-)
+from ..models import RegistrationCreate, RegistrationResponse
 from ..auth import get_current_user
 import uuid
 from datetime import datetime
@@ -17,7 +14,7 @@ router = APIRouter(
     tags=["registrations"]
 )
 
-@router.get("/verify/{account_number}", response_model=dict)
+@router.get("/verify/{account_number}")
 async def verify_account(
     account_number: str,
     current_user: str = Depends(get_current_user)
@@ -112,14 +109,14 @@ async def register_account(
         
         return {
             "id": registration_id,
-            "accountNumber": registration.account_number,
-            "fullName": registration.full_name,
-            "phoneNumber": registration.phone_number,
+            "account_number": registration.account_number,
+            "full_name": registration.full_name,
+            "phone_number": registration.phone_number,
             "email": registration.email,
-            "idNumber": registration.id_number,
-            "registrationDate": now,
-            "hasStatement": 0,
-            "issuedBy": current_user
+            "id_number": registration.id_number,
+            "registration_date": now,
+            "has_statement": 0,
+            "issued_by": current_user
         }
         
     except Exception as e:
@@ -130,7 +127,7 @@ async def register_account(
         cursor.close()
         conn.close()
 
-@router.get("/stats", response_model=dict)
+@router.get("/stats")
 async def get_registration_stats(current_user: str = Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -184,18 +181,17 @@ async def get_registrations(current_user: str = Depends(get_current_user)):
         for row in cursor.fetchall():
             registrations.append({
                 "id": row[0],
-                "accountNumber": row[1],
-                "fullName": row[2],
-                "phoneNumber": row[3],
+                "account_number": row[1],
+                "full_name": row[2],
+                "phone_number": row[3],
                 "email": row[4],
-                "idNumber": row[5],
-                "registrationDate": row[6],
-                "createdAt": row[7],
-                "hasStatement": row[8],
-                "issuedBy": row[9]
+                "id_number": row[5],
+                "registration_date": row[6],
+                "created_at": row[7],
+                "has_statement": row[8],
+                "issued_by": row[9]
             })
         return registrations
     finally:
         cursor.close()
         conn.close()
-```

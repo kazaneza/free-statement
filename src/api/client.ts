@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { formatDateForSQL, isValidDate } from '../utils/dateUtils';
-import { ADUser, Registrant } from '../types';
+import { ADUser, Registrant, AccountVerification } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -79,7 +79,7 @@ export const login = async (username: string, password: string) => {
 };
 
 // Verify account and check if already registered
-export const verifyAccount = async (accountNumber: string) => {
+export const verifyAccount = async (accountNumber: string): Promise<AccountVerification> => {
   try {
     const response = await api.get(`/api/registrations/verify/${accountNumber}`);
     return response.data;
@@ -95,7 +95,7 @@ export const registerAccount = async (registrationData: {
   phoneNumber: string;
   email?: string;
   idNumber?: string;
-}) => {
+}): Promise<Registrant> => {
   try {
     const response = await api.post('/api/registrations/', registrationData);
     return response.data;
@@ -115,7 +115,7 @@ export const getDashboardStats = async () => {
 };
 
 // Get all registrations
-export const getRegistrations = async () => {
+export const getRegistrations = async (): Promise<Registrant[]> => {
   try {
     const response = await api.get('/api/registrations/');
     return response.data;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, Upload, Settings, Users } from 'lucide-react';
+import { Users, Settings } from 'lucide-react';
 
 interface SettingsNavProps {
   activeTab: string;
@@ -8,9 +8,7 @@ interface SettingsNavProps {
 
 const SettingsNav: React.FC<SettingsNavProps> = ({ activeTab, onTabChange }) => {
   const tabs = [
-    { id: 'branches', label: 'Branch Management', icon: Building2 },
-    { id: 'issuers', label: 'Issuer Management', icon: Users },
-    { id: 'bulk', label: 'Bulk Registration', icon: Upload },
+    { id: 'issuers', label: 'Statement Issuers', icon: Users },
     { id: 'system', label: 'System Settings', icon: Settings }
   ];
 

@@ -28,7 +28,6 @@ def init_db():
                 id_number VARCHAR(50),
                 registration_date DATETIME NOT NULL,
                 created_at DATETIME NOT NULL DEFAULT GETDATE(),
-                has_statement INT NOT NULL DEFAULT 0,
                 issued_by VARCHAR(100) NOT NULL
             )
         """)

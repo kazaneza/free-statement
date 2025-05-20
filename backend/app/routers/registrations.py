@@ -89,9 +89,9 @@ async def register_account(
             INSERT INTO registrations (
                 id, account_number, full_name, phone_number,
                 email, id_number, registration_date, created_at,
-                has_statement, issued_by
+                issued_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             registration_id,
             registration.account_number,
@@ -101,7 +101,6 @@ async def register_account(
             registration.id_number,
             now,
             now,
-            0,  # has_statement = 0 (no statement yet)
             current_user
         ))
         
@@ -115,7 +114,6 @@ async def register_account(
             "email": registration.email,
             "id_number": registration.id_number,
             "registration_date": now,
-            "has_statement": 0,
             "issued_by": current_user
         }
         
@@ -172,7 +170,7 @@ async def get_registrations(current_user: str = Depends(get_current_user)):
         cursor.execute("""
             SELECT id, account_number, full_name, phone_number,
                    email, id_number, registration_date, created_at,
-                   has_statement, issued_by
+                   issued_by
             FROM registrations
             ORDER BY registration_date DESC
         """)
@@ -188,8 +186,7 @@ async def get_registrations(current_user: str = Depends(get_current_user)):
                 "id_number": row[5],
                 "registration_date": row[6],
                 "created_at": row[7],
-                "has_statement": row[8],
-                "issued_by": row[9]
+                "issued_by": row[8]
             })
         return registrations
     finally:

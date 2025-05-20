@@ -187,7 +187,7 @@ async def get_registrations(current_user: str = Depends(get_current_user)):
                 id_number=row[5],
                 registration_date=row[6],
                 created_at=row[7],
-                issued_by=row[8]
+                issued_by=row[8] if row[8] is not None else ""
             ))
         return registrations
     finally:

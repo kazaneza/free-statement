@@ -18,7 +18,7 @@ class RegistrationResponse(BaseModel):
     id_number: Optional[str] = None
     registration_date: datetime
     created_at: datetime
-    issued_by: str
+    issued_by: Optional[str] = None  
 
 class ADUser(BaseModel):
     username: str

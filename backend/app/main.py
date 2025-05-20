@@ -2,8 +2,6 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from .auth import verify_ldap_credentials, create_access_token
-from .routers.branches import router as branches_router
-from .routers.issuers import router as issuers_router
 from .routers.registrations import router as registrations_router
 from .database import init_db
 import logging
@@ -30,8 +28,6 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(branches_router)
-app.include_router(issuers_router)
 app.include_router(registrations_router)
 
 @app.post("/token")

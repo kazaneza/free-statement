@@ -2,8 +2,6 @@
 This module contains all API routers.
 """
 
-from .branches import router as branches_router
+from .registrations import router as registrations_router
 
-__all__ = ['branches_router']
-
-
+__all__ = ['registrations_router']

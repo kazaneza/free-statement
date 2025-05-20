@@ -16,7 +16,7 @@ def init_db():
     cursor = conn.cursor()
     
     try:
-        # Check if registrations table exists
+        # Create registrations table
         cursor.execute("""
             IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='registrations' AND xtype='U')
             CREATE TABLE registrations (

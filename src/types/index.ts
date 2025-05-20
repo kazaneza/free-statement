@@ -8,10 +8,10 @@ export interface Registrant {
   registrationDate: string;
   issuedBy: string;
   branch: string;
-  isIssued: boolean; // Changed from hasStatement
-  statementUrl?: string; // Optional property present in some places
-  statementPeriod?: string; // Optional property present in mockData
-  notes?: string; // Optional property present in mockData
+  hasStatement: number; // 0 = no statement, 1 = has statement
+  statementUrl?: string; // URL to download the statement
+  statementPeriod?: string; // e.g. "3 months"
+  notes?: string; // Additional notes
 }
 
 export interface AccountVerification {
@@ -51,3 +51,25 @@ export interface Branch {
   name: string;
   createdAt: string;
 }
+
+export interface Issuer {
+  id: string;
+  name: string;
+  branch_id: string;
+  created_at: string;
+  active: boolean;
+}
+
+export interface BranchCreate {
+  code: string;
+  name: string;
+}
+
+export interface BranchResponse extends Branch {}
+
+export interface IssuerCreate {
+  name: string;
+  branch_id: string;
+}
+
+export interface IssuerResponse extends Issuer {}

@@ -40,14 +40,25 @@ const Dashboard: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
+        // Use Promise.all to fetch both datasets in parallel
         const [statsData, registrationsData] = await Promise.all([
           getDashboardStats(),
-          getRegistrations(true) // Only get issued statements
+          getRegistrations()
         ]);
+        
+        // Set the stats data
         setStats(statsData);
-        setRegistrants(registrationsData);
+        
+        // Set the registrations data
+        if (Array.isArray(registrationsData)) {
+          setRegistrants(registrationsData);
+        } else {
+          console.error('Expected array for registrations data:', registrationsData);
+          setRegistrants([]);
+        }
       } catch (err: any) {
-        setError(err.message);
+        console.error('Error fetching dashboard data:', err);
+        setError(err.message || 'Failed to load dashboard data');
       } finally {
         setIsLoading(false);
       }
@@ -80,7 +91,7 @@ const Dashboard: React.FC = () => {
             registrationDate: result.registrationDate || '',
             issuedBy: '',
             branch: '',
-            isIssued: false
+            hasStatement: 0
           }
         });
         setShowModal(true);
@@ -99,10 +110,11 @@ const Dashboard: React.FC = () => {
           });
         }, 1500);
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Account verification error:', error);
       setVerificationResult({
         isEligible: false,
-        message: 'Failed to verify account. Please try again.'
+        message: error.message || 'Failed to verify account. Please try again.'
       });
     }
   };
@@ -167,7 +179,7 @@ const Dashboard: React.FC = () => {
                     <div>
                       <p className="text-sm text-gray-500">Registration Date</p>
                       <p className="text-sm font-medium text-gray-900">
-                        {verificationResult.registrant.registrationDate}
+                        {verificationResult.registrant.registrationDate || 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -232,7 +244,7 @@ const Dashboard: React.FC = () => {
 
       {/* Statement Records */}
       <DashboardTable
-        registrations={state.registrants}
+        registrations={state.registrants || []}
         currentPage={currentPage}
         recordsPerPage={recordsPerPage}
         searchTerm={searchTerm}

@@ -1,9 +1,9 @@
+```python
 from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import List
+from typing import List, Optional
 from ..database import get_db_connection
 from ..models import (
-    Registration, RegistrationCreate, RegistrationResponse,
-    BulkRegistrationItem, StatementHistory, StatementHistoryCreate, StatementHistoryResponse
+    Registration, RegistrationCreate, RegistrationResponse
 )
 from ..auth import get_current_user
 import uuid
@@ -16,6 +16,119 @@ router = APIRouter(
     prefix="/api/registrations",
     tags=["registrations"]
 )
+
+@router.get("/verify/{account_number}", response_model=dict)
+async def verify_account(
+    account_number: str,
+    current_user: str = Depends(get_current_user)
+):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Check if account already exists in registrations
+        cursor.execute("""
+            SELECT id, full_name, phone_number, registration_date
+            FROM registrations 
+            WHERE account_number = ?
+        """, account_number)
+        
+        existing_registration = cursor.fetchone()
+        
+        if existing_registration:
+            return {
+                "accountNumber": account_number,
+                "isRegistered": True,
+                "registrationDate": existing_registration[3],
+                "accountDetails": {
+                    "fullName": existing_registration[1],
+                    "phoneNumber": existing_registration[2]
+                }
+            }
+        
+        # For demo purposes, return mock account details
+        # In production, this would query your core banking system
+        return {
+            "accountNumber": account_number,
+            "isRegistered": False,
+            "accountDetails": {
+                "fullName": "John Doe",
+                "phoneNumber": "0788123456"
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error verifying account: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@router.post("/", response_model=RegistrationResponse)
+async def register_account(
+    registration: RegistrationCreate,
+    current_user: str = Depends(get_current_user)
+):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Check if account already exists
+        cursor.execute("""
+            SELECT id FROM registrations 
+            WHERE account_number = ?
+        """, registration.account_number)
+        
+        if cursor.fetchone():
+            raise HTTPException(
+                status_code=400,
+                detail="Account already registered"
+            )
+        
+        registration_id = str(uuid.uuid4())
+        now = datetime.utcnow()
+        
+        cursor.execute("""
+            INSERT INTO registrations (
+                id, account_number, full_name, phone_number,
+                email, id_number, registration_date, created_at,
+                has_statement, issued_by
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            registration_id,
+            registration.account_number,
+            registration.full_name,
+            registration.phone_number,
+            registration.email,
+            registration.id_number,
+            now,
+            now,
+            0,  # has_statement = 0 (no statement yet)
+            current_user
+        ))
+        
+        conn.commit()
+        
+        return {
+            "id": registration_id,
+            "accountNumber": registration.account_number,
+            "fullName": registration.full_name,
+            "phoneNumber": registration.phone_number,
+            "email": registration.email,
+            "idNumber": registration.id_number,
+            "registrationDate": now,
+            "hasStatement": 0,
+            "issuedBy": current_user
+        }
+        
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error registering account: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
 
 @router.get("/stats", response_model=dict)
 async def get_registration_stats(current_user: str = Depends(get_current_user)):
@@ -37,11 +150,9 @@ async def get_registration_stats(current_user: str = Depends(get_current_user)):
         
         # Get registrations by branch
         cursor.execute("""
-            SELECT b.name as branch_name, COUNT(sh.id) as count
-            FROM branches b
-            LEFT JOIN issuers i ON i.branch_id = b.id
-            LEFT JOIN statement_history sh ON sh.issuer_id = i.id
-            GROUP BY b.name
+            SELECT issued_by, COUNT(*) as count
+            FROM registrations
+            GROUP BY issued_by
             ORDER BY count DESC
         """)
         branch_stats = [{"branch": row[0], "count": row[1]} for row in cursor.fetchall()]
@@ -55,81 +166,6 @@ async def get_registration_stats(current_user: str = Depends(get_current_user)):
         cursor.close()
         conn.close()
 
-@router.post("/bulk", response_model=dict)
-async def create_bulk_registrations(
-    registrations: List[BulkRegistrationItem],
-    current_user: str = Depends(get_current_user)
-):
-    logger.debug(f"Processing bulk registration request: {len(registrations)} items")
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    results = {
-        "success": 0,
-        "failed": 0,
-        "errors": []
-    }
-    
-    try:
-        for idx, reg in enumerate(registrations, 1):
-            try:
-                # Validate required fields
-                if not reg.account_number or not reg.customer_name or not reg.phone_number:
-                    raise ValueError("Missing required fields")
-
-                # Check if account number already exists
-                cursor.execute("""
-                    SELECT id FROM registrations 
-                    WHERE account_number = ?
-                """, reg.account_number)
-                
-                if cursor.fetchone():
-                    raise ValueError("Account number already registered")
-
-                reg_id = str(uuid.uuid4())
-                registration_date = datetime.utcnow()
-                
-                cursor.execute("""
-                    INSERT INTO registrations (
-                        id, account_number, full_name, phone_number,
-                        registration_date, created_at
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    reg_id,
-                    reg.account_number,
-                    reg.customer_name,
-                    reg.phone_number,
-                    registration_date,
-                    datetime.utcnow()
-                ))
-                
-                results["success"] += 1
-                
-            except ValueError as ve:
-                results["failed"] += 1
-                results["errors"].append(f"Row {idx}: {str(ve)}")
-                logger.warning(f"Validation error in row {idx}: {str(ve)}")
-                continue
-            except Exception as e:
-                results["failed"] += 1
-                results["errors"].append(f"Row {idx}: {str(e)}")
-                logger.error(f"Error processing row {idx}: {str(e)}")
-                continue
-        
-        conn.commit()
-        logger.info(f"Bulk registration completed: {results['success']} successful, {results['failed']} failed")
-        return results
-        
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Bulk registration error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cursor.close()
-        conn.close()
-
 @router.get("/", response_model=List[RegistrationResponse])
 async def get_registrations(current_user: str = Depends(get_current_user)):
     conn = get_db_connection()
@@ -137,72 +173,29 @@ async def get_registrations(current_user: str = Depends(get_current_user)):
     
     try:
         cursor.execute("""
-            SELECT r.id, r.account_number, r.full_name, r.phone_number,
-                   r.email, r.id_number, r.registration_date, r.created_at,
-                   sh.statement_url, i.name as issuer_name
-            FROM registrations r
-            LEFT JOIN statement_history sh ON sh.registration_id = r.id
-            LEFT JOIN issuers i ON i.id = sh.issuer_id
-            ORDER BY r.created_at DESC
+            SELECT id, account_number, full_name, phone_number,
+                   email, id_number, registration_date, created_at,
+                   has_statement, issued_by
+            FROM registrations
+            ORDER BY registration_date DESC
         """)
         
         registrations = []
         for row in cursor.fetchall():
-            registrations.append(RegistrationResponse(
-                id=row[0],
-                account_number=row[1],
-                full_name=row[2],
-                phone_number=row[3],
-                email=row[4],
-                id_number=row[5],
-                registration_date=row[6],
-                created_at=row[7]
-            ))
+            registrations.append({
+                "id": row[0],
+                "accountNumber": row[1],
+                "fullName": row[2],
+                "phoneNumber": row[3],
+                "email": row[4],
+                "idNumber": row[5],
+                "registrationDate": row[6],
+                "createdAt": row[7],
+                "hasStatement": row[8],
+                "issuedBy": row[9]
+            })
         return registrations
     finally:
         cursor.close()
         conn.close()
-
-@router.post("/statement-history", response_model=StatementHistoryResponse)
-async def create_statement_history(
-    statement: StatementHistoryCreate,
-    current_user: str = Depends(get_current_user)
-):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        statement_id = str(uuid.uuid4())
-        issue_date = datetime.utcnow()
-        
-        cursor.execute("""
-            INSERT INTO statement_history (
-                id, registration_id, issuer_id, statement_url,
-                issue_date, created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            statement_id,
-            statement.registration_id,
-            statement.issuer_id,
-            statement.statement_url,
-            issue_date,
-            datetime.utcnow()
-        ))
-        
-        conn.commit()
-        
-        return StatementHistoryResponse(
-            id=statement_id,
-            registration_id=statement.registration_id,
-            issuer_id=statement.issuer_id,
-            statement_url=statement.statement_url,
-            issue_date=issue_date,
-            created_at=datetime.utcnow()
-        )
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cursor.close()
-        conn.close()
+```

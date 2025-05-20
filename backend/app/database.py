@@ -1,3 +1,4 @@
+```python
 import pyodbc
 from .config import get_settings
 
@@ -16,30 +17,6 @@ def init_db():
     cursor = conn.cursor()
     
     try:
-        # Check if branches table exists
-        cursor.execute("""
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='branches' AND xtype='U')
-            CREATE TABLE branches (
-                id VARCHAR(36) PRIMARY KEY,
-                code VARCHAR(10) NOT NULL UNIQUE,
-                name VARCHAR(100) NOT NULL,
-                created_at DATETIME NOT NULL DEFAULT GETDATE()
-            )
-        """)
-
-        # Check if issuers table exists
-        cursor.execute("""
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='issuers' AND xtype='U')
-            CREATE TABLE issuers (
-                id VARCHAR(36) PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
-                branch_id VARCHAR(36) NOT NULL,
-                created_at DATETIME NOT NULL DEFAULT GETDATE(),
-                active BIT NOT NULL DEFAULT 1,
-                FOREIGN KEY (branch_id) REFERENCES branches(id)
-            )
-        """)
-
         # Check if registrations table exists
         cursor.execute("""
             IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='registrations' AND xtype='U')
@@ -51,22 +28,9 @@ def init_db():
                 email VARCHAR(100),
                 id_number VARCHAR(50),
                 registration_date DATETIME NOT NULL,
-                created_at DATETIME NOT NULL DEFAULT GETDATE()
-            )
-        """)
-
-        # Check if statement_history table exists
-        cursor.execute("""
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='statement_history' AND xtype='U')
-            CREATE TABLE statement_history (
-                id VARCHAR(36) PRIMARY KEY,
-                registration_id VARCHAR(36) NOT NULL,
-                issuer_id VARCHAR(36) NOT NULL,
-                statement_url VARCHAR(500),
-                issue_date DATETIME NOT NULL DEFAULT GETDATE(),
                 created_at DATETIME NOT NULL DEFAULT GETDATE(),
-                FOREIGN KEY (registration_id) REFERENCES registrations(id),
-                FOREIGN KEY (issuer_id) REFERENCES issuers(id)
+                has_statement INT NOT NULL DEFAULT 0,
+                issued_by VARCHAR(100) NOT NULL
             )
         """)
         
@@ -78,3 +42,4 @@ def init_db():
     finally:
         cursor.close()
         conn.close()
+```

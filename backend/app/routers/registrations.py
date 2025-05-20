@@ -114,6 +114,7 @@ async def register_account(
             "email": registration.email,
             "id_number": registration.id_number,
             "registration_date": now,
+            "created_at": now,
             "issued_by": current_user
         }
         
@@ -177,17 +178,17 @@ async def get_registrations(current_user: str = Depends(get_current_user)):
         
         registrations = []
         for row in cursor.fetchall():
-            registrations.append({
-                "id": row[0],
-                "account_number": row[1],
-                "full_name": row[2],
-                "phone_number": row[3],
-                "email": row[4],
-                "id_number": row[5],
-                "registration_date": row[6],
-                "created_at": row[7],
-                "issued_by": row[8]
-            })
+            registrations.append(RegistrationResponse(
+                id=row[0],
+                account_number=row[1],
+                full_name=row[2],
+                phone_number=row[3],
+                email=row[4],
+                id_number=row[5],
+                registration_date=row[6],
+                created_at=row[7],
+                issued_by=row[8]
+            ))
         return registrations
     finally:
         cursor.close()

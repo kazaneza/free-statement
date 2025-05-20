@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, UserPlus, FileBarChart, Settings, X } from 'lucide-react';
+import { LayoutDashboard, UserPlus, X, FileText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
@@ -89,39 +89,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             </NavLink>
             
             <NavLink 
-              to="/register" 
+              to="/issued-history" // <-- Change route
               className={({ isActive }) => 
                 `${linkClass} ${isActive ? activeLinkClass : ''}`
               }
             >
-              <UserPlus size={20} className="mr-3" />
-              <span>Register New</span>
-            </NavLink>
-            
-            <NavLink 
-              to="/reports" 
-              className={({ isActive }) => 
-                `${linkClass} ${isActive ? activeLinkClass : ''}`
-              }
-            >
-              <FileBarChart size={20} className="mr-3" />
-              <span>Reports</span>
-            </NavLink>
-            
-            <div className="px-3 my-3">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Administration
-              </h2>
-            </div>
-            
-            <NavLink 
-              to="/settings" 
-              className={({ isActive }) => 
-                `${linkClass} ${isActive ? activeLinkClass : ''}`
-              }
-            >
-              <Settings size={20} className="mr-3" />
-              <span>Settings</span>
+              <FileText size={20} className="mr-3" />
+              <span>Issued History</span>
             </NavLink>
           </nav>
           

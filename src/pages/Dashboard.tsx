@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, CheckCircle, XCircle, X, AlertCircle } from 'lucide-react';
+import { Search, CheckCircle, XCircle, X, AlertCircle, UserPlus, FileText } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getDashboardStats, getRegistrations } from '../api/client';
 import DashboardStats from '../components/dashboard/DashboardStats';
@@ -9,7 +9,7 @@ import DashboardTable from '../components/dashboard/DashboardTable';
 const Dashboard: React.FC = () => {
   const { state, verifyAccount, setRegistrants } = useApp();
   const navigate = useNavigate();
-  
+
   // Dashboard states
   const [stats, setStats] = useState<{
     total_registrations: number;
@@ -35,38 +35,28 @@ const Dashboard: React.FC = () => {
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Fetch dashboard stats and registrations only once on mount
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        // Use Promise.all to fetch both datasets in parallel
-        const [statsData, registrationsData] = await Promise.all([
-          getDashboardStats(),
-          getRegistrations()
-        ]);
-        
-        // Set the stats data
-        setStats(statsData);
-        
-        // Set the registrations data
-        if (Array.isArray(registrationsData)) {
-          setRegistrants(registrationsData);
-        } else {
-          console.error('Expected array for registrations data:', registrationsData);
-          setRegistrants([]);
-        }
+        // Fetch all registrations for total accounts
+        const allRegistrations = await getRegistrations(false);
+        setRegistrants(allRegistrations);
       } catch (err: any) {
-        console.error('Error fetching dashboard data:', err);
-        setError(err.message || 'Failed to load dashboard data');
+        setError("Failed to load dashboard data.");
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchData();
-  }, [setRegistrants]);
-  
+  }, []); // Only run once on mount
+
+  // Calculate total accounts and total issued statements
+  const totalAccounts = state.registrants.length;
+  const totalIssuedStatements = state.registrants.filter(r => r.isIssued).length;
+
   const handleAccountVerification = async () => {
     if (!accountNumber.trim()) {
       setVerificationResult({
@@ -78,24 +68,29 @@ const Dashboard: React.FC = () => {
 
     try {
       const result = await verifyAccount(accountNumber);
-      
-      if (result.isRegistered) {
+
+      if (result.isRegistered && result.isIssued) {
+        // Try to find the registrant in state to get issuedBy and registrationDate
+        const registrant = state.registrants.find(
+          r => r.accountNumber === result.accountNumber
+        );
         setVerificationResult({
           isEligible: false,
           message: 'Account has already received a free statement',
           registrant: {
-            id: '',
+            id: registrant?.id || '',
             accountNumber: result.accountNumber,
-            fullName: result.accountDetails?.fullName || '',
-            phoneNumber: result.accountDetails?.phoneNumber || '',
-            registrationDate: result.registrationDate || '',
-            issuedBy: '',
-            branch: '',
+            fullName: registrant?.fullName || result.accountDetails?.fullName || '',
+            phoneNumber: registrant?.phoneNumber || result.accountDetails?.phoneNumber || '',
+            registrationDate: registrant?.registrationDate || result.registrationDate || '',
+            issuedBy: registrant?.issuedBy || 'N/A',
+            branch: registrant?.branch || '',
             hasStatement: 0
           }
         });
         setShowModal(true);
       } else {
+        // Not issued yet: redirect to register page
         setVerificationResult({
           isEligible: true,
           message: 'Account is eligible for free statement'
@@ -138,6 +133,9 @@ const Dashboard: React.FC = () => {
     );
   }
   
+  // Filter only issued registrations
+  const issuedRegistrations = state.registrants.filter(r => r.isIssued);
+
   return (
     <div className="animate-fade-in space-y-6">
       {/* Account Verification Modal */}
@@ -177,9 +175,15 @@ const Dashboard: React.FC = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Registration Date</p>
+                      <p className="text-sm text-gray-500">Issued Date</p>
                       <p className="text-sm font-medium text-gray-900">
                         {verificationResult.registrant.registrationDate || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Issued By</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {verificationResult.registrant.issuedBy || 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -239,12 +243,31 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats */}
-      <DashboardStats stats={stats} />
+      {/* Stats - Only show two cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl shadow p-6 flex items-center gap-4">
+          <div className="bg-primary/10 text-primary rounded-full p-3">
+            <UserPlus size={28} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{totalAccounts}</div>
+            <div className="text-gray-500 text-sm">Total Accounts</div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow p-6 flex items-center gap-4">
+          <div className="bg-green-100 text-green-600 rounded-full p-3">
+            <FileText size={28} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{totalIssuedStatements}</div>
+            <div className="text-gray-500 text-sm">Total Issued Statements</div>
+          </div>
+        </div>
+      </div>
 
       {/* Statement Records */}
       <DashboardTable
-        registrations={state.registrants || []}
+        registrations={issuedRegistrations}
         currentPage={currentPage}
         recordsPerPage={recordsPerPage}
         searchTerm={searchTerm}

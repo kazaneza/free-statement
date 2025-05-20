@@ -169,9 +169,11 @@ export const getDashboardStats = async () => {
 };
 
 // Get all registrations
-export const getRegistrations = async (): Promise<Registrant[]> => {
+export const getRegistrations = async (issuedOnly: boolean = false): Promise<Registrant[]> => {
   try {
-    const response = await api.get('/api/registrations/');
+    const response = await api.get('/api/registrations/', {
+      params: issuedOnly ? { issued_only: true } : undefined
+    });
     
     // Check if response.data is an array
     if (!Array.isArray(response.data)) {
@@ -189,7 +191,8 @@ export const getRegistrations = async (): Promise<Registrant[]> => {
       registrationDate: reg.registration_date || new Date().toISOString(),
       issuedBy: reg.issued_by || '',
       branch: 'Head Office',
-      hasStatement: 0
+      hasStatement: 0,
+      isIssued: reg.is_issued === true || reg.is_issued === 1
     }));
   } catch (error: any) {
     console.error('Error fetching registrations:', error);
@@ -233,6 +236,23 @@ export const createBulkRegistrations = async (
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to process bulk registrations');
   }
+};
+
+export const getPendingRegistrations = async (): Promise<Registrant[]> => {
+  const response = await api.get('/api/registrations/', {
+    params: { issued_only: false, pending_only: true }
+  });
+  return response.data;
+};
+
+export const issueRegistration = async (registrationId: string) => {
+  await api.patch(`/api/registrations/${registrationId}/issue`);
+};
+
+const handleRegister = async (registrationData) => {
+  await registerAccount(registrationData);
+  await issueRegistration(registrationData.id); // Mark as issued after registration
+  // Refresh or redirect as needed
 };
 
 export default api;

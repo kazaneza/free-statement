@@ -47,9 +47,11 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
           <div className="flex-1 flex justify-center md:justify-start">
             <Link to="/" className="md:mr-6">
               <div className="flex items-center">
-                <div className="text-2xl font-bold text-primary">
-                  <span>Bank of Kigali</span>
-                </div>
+                <img
+                  src="/images/bk-logo.png"
+                  alt="Bank of Kigali Logo"
+                  className="h-8 w-auto object-contain" // Reduced from h-10 to h-8
+                />
               </div>
             </Link>
           </div>

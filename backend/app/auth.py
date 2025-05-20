@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from .config import get_settings
-from .models import ADUser
+from .models import ADUser, RegistrationResponse
 import logging
 
 # Set up logging
@@ -147,4 +147,69 @@ def get_ad_users(search_term: str = None):
         
     except Exception as e:
         logger.error(f"Error in get_ad_users: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+def register_user_to_db(user_data):
+    try:
+        logger.debug(f"Registering user to DB: {user_data}")
+        settings = get_settings()
+        server = Server(settings.ldap_server, get_info=ALL)
+        
+        # Connect to LDAP
+        conn = Connection(server, auto_bind=True)
+        logger.debug("LDAP connection established")
+        
+        # Prepare user attributes
+        user_attributes = {
+            'objectClass': ['top', 'person', 'organizationalPerson', 'user'],
+            'sAMAccountName': user_data.username,
+            'userPrincipalName': f"{user_data.username}@bk.local",
+            'givenName': user_data.first_name,
+            'sn': user_data.last_name,
+            'displayName': user_data.display_name,
+            'mail': user_data.email,
+            'userAccountControl': '512',  # Normal account
+            'department': user_data.department
+        }
+        
+        # Add user to LDAP
+        conn.add(
+            dn=f"CN={user_data.username},{settings.ldap_base_dn}",
+            attributes=user_attributes
+        )
+        
+        if not conn.result['description'] == 'success':
+            logger.error(f"Failed to add user to LDAP: {conn.result['description']}")
+            raise HTTPException(status_code=500, detail="Failed to register user")
+        
+        logger.info(f"User registered successfully: {user_data.username}")
+        
+        # Fetch the newly created user row
+        search_filter = f"(sAMAccountName={user_data.username})"
+        conn.search(
+            search_base=settings.ldap_base_dn,
+            search_filter=search_filter,
+            search_scope=SUBTREE,
+            attributes=['distinguishedName', 'memberOf', 'whenCreated', 'lastLogon']
+        )
+        
+        if not conn.entries:
+            logger.error(f"User {user_data.username} not found after registration")
+            raise HTTPException(status_code=500, detail="User not found after registration")
+        
+        updated_row = conn.entries[0]
+        
+        return RegistrationResponse(
+            username=updated_row.sAMAccountName,
+            email=updated_row.mail,
+            display_name=updated_row.displayName,
+            department=updated_row.department,
+            registered_on=updated_row.whenCreated,
+            last_login=updated_row.lastLogon,
+            status="Active",
+            issued_by=updated_row[8] if updated_row[8] else "",
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in register_user_to_db: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

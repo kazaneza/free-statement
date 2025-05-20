@@ -21,22 +21,19 @@ async def verify_account(
 ):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
     try:
-        # Check if account already exists in registrations
         cursor.execute("""
-            SELECT id, full_name, phone_number, registration_date
+            SELECT id, full_name, phone_number, registration_date, is_issued
             FROM registrations 
             WHERE account_number = ?
         """, account_number)
-        
         existing_registration = cursor.fetchone()
-        
         if existing_registration:
             return {
                 "accountNumber": account_number,
                 "isRegistered": True,
                 "registrationDate": existing_registration[3],
+                "isIssued": bool(existing_registration[4]) if existing_registration[4] is not None else False,
                 "accountDetails": {
                     "fullName": existing_registration[1],
                     "phoneNumber": existing_registration[2]
@@ -62,66 +59,64 @@ async def verify_account(
         conn.close()
 
 @router.post("/", response_model=RegistrationResponse)
-async def register_account(
-    registration: RegistrationCreate,
-    current_user: str = Depends(get_current_user)
-):
+def register_account(reg: RegistrationCreate, user=Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
     try:
-        # Check if account already exists
-        cursor.execute("""
-            SELECT id FROM registrations 
-            WHERE account_number = ?
-        """, registration.account_number)
-        
-        if cursor.fetchone():
-            raise HTTPException(
-                status_code=400,
-                detail="Account already registered"
-            )
-        
-        registration_id = str(uuid.uuid4())
-        now = datetime.utcnow()
-        
-        cursor.execute("""
-            INSERT INTO registrations (
-                id, account_number, full_name, phone_number,
-                email, id_number, registration_date, created_at,
-                issued_by
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            registration_id,
-            registration.account_number,
-            registration.full_name,
-            registration.phone_number,
-            registration.email,
-            registration.id_number,
-            now,
-            now,
-            current_user
-        ))
-        
-        conn.commit()
-        
-        return {
-            "id": registration_id,
-            "account_number": registration.account_number,
-            "full_name": registration.full_name,
-            "phone_number": registration.phone_number,
-            "email": registration.email,
-            "id_number": registration.id_number,
-            "registration_date": now,
-            "created_at": now,
-            "issued_by": current_user
-        }
-        
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Error registering account: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Check if account exists
+        cursor.execute("SELECT id, is_issued FROM registrations WHERE account_number = ?", (reg.account_number,))
+        row = cursor.fetchone()
+        if row:
+            reg_id, is_issued = row
+            if is_issued:
+                raise HTTPException(status_code=400, detail="Account has already received a free statement")
+            # Update pending registration
+            cursor.execute("""
+                UPDATE registrations
+                SET full_name=?, phone_number=?, email=?, id_number=?, registration_date=?, issued_by=?, is_issued=1
+                WHERE id=?
+            """, (
+                reg.full_name, reg.phone_number, reg.email, reg.id_number,
+                datetime.now(), user, reg_id
+            ))
+            conn.commit()
+            # Fetch the updated record
+            cursor.execute("""
+                SELECT id, account_number, full_name, phone_number, email, id_number, registration_date, created_at, issued_by, is_issued
+                FROM registrations WHERE id=?
+            """, (reg_id,))
+            updated_row = cursor.fetchone()
+        else:
+            # Insert new registration
+            reg_id = str(uuid.uuid4())
+            now = datetime.now()
+            cursor.execute("""
+                INSERT INTO registrations (id, account_number, full_name, phone_number, email, id_number, registration_date, created_at, issued_by, is_issued)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            """, (
+                reg_id, reg.account_number, reg.full_name, reg.phone_number, reg.email, reg.id_number,
+                now, now, user
+            ))
+            conn.commit()
+            # Fetch the inserted record
+            cursor.execute("""
+                SELECT id, account_number, full_name, phone_number, email, id_number, registration_date, created_at, issued_by, is_issued
+                FROM registrations WHERE id=?
+            """, (reg_id,))
+            updated_row = cursor.fetchone()
+        # Return all required fields
+        return RegistrationResponse(
+            id=updated_row[0],
+            account_number=updated_row[1],
+            full_name=updated_row[2],
+            phone_number=updated_row[3],
+            email=updated_row[4],
+            id_number=updated_row[5],
+            registration_date=updated_row[6],
+            created_at=updated_row[7],
+            issued_by=updated_row[8],
+            is_issued=bool(updated_row[9])
+        )
     finally:
         cursor.close()
         conn.close()
@@ -162,29 +157,19 @@ async def get_registration_stats(current_user: str = Depends(get_current_user)):
         cursor.close()
         conn.close()
 
-@router.put("/{registration_id}/issue")
-async def mark_as_issued(
-    registration_id: str,
-    current_user: str = Depends(get_current_user)
-):
+@router.patch("/{registration_id}/issue")
+def issue_registration(registration_id: str, user=Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
     try:
-        cursor.execute("""
-            UPDATE registrations 
-            SET is_issued = 1 
-            WHERE id = ?
-        """, registration_id)
-        
-        if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Registration not found")
-            
+        cursor.execute(
+            "UPDATE registrations SET is_issued = 1 WHERE id = ?",
+            (registration_id,)
+        )
         conn.commit()
-        return {"message": "Statement marked as issued successfully"}
+        return {"message": "Registration issued successfully."}
     except Exception as e:
         conn.rollback()
-        logger.error(f"Error marking registration as issued: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
@@ -230,6 +215,17 @@ async def get_registrations(
                 is_issued=bool(row[9]) if len(row) > 9 else False
             ))
         return registrations
+    finally:
+        cursor.close()
+        conn.close()
+
+def get_issued_registrations():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM registrations WHERE is_issued = 1")
+        results = cursor.fetchall()
+        return results
     finally:
         cursor.close()
         conn.close()

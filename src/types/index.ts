@@ -6,8 +6,9 @@ export interface Registrant {
   email?: string;
   idNumber?: string;
   registrationDate: string;
-  branch: string;
+  hasStatement: number; // 0 = no statement, 1 = has statement
   issuedBy: string;
+  branch: string;
 }
 
 export interface AccountVerification {

@@ -97,10 +97,25 @@ export const registerAccount = async (registrationData: {
   idNumber?: string;
 }): Promise<Registrant> => {
   try {
-    const response = await api.post('/api/registrations/', registrationData);
+    const response = await api.post('/api/registrations/', {
+      ...registrationData,
+      hasStatement: 0 // Default to no statement
+    });
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to register account');
+  }
+};
+
+// Update statement status
+export const updateStatementStatus = async (registrationId: string, hasStatement: boolean) => {
+  try {
+    const response = await api.patch(`/api/registrations/${registrationId}/statement`, {
+      hasStatement: hasStatement ? 1 : 0
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to update statement status');
   }
 };
 

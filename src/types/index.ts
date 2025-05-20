@@ -1,16 +1,37 @@
 export interface Registrant {
   id: string;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  idNumber: string;
-  branch: string;
   accountNumber: string;
-  statementPeriod: string;
+  fullName: string;
+  phoneNumber: string;
+  email?: string;
+  idNumber?: string;
   registrationDate: string;
-  statementUrl?: string;
-  notes?: string;
+  branch: string;
   issuedBy: string;
+}
+
+export interface AccountVerification {
+  accountNumber: string;
+  isRegistered: boolean;
+  registrationDate?: string;
+  accountDetails?: {
+    fullName: string;
+    phoneNumber: string;
+  };
+}
+
+export interface User {
+  id: string;
+  username: string;
+  fullName: string;
+  role: 'admin' | 'issuer';
+  branch: string;
+}
+
+export interface DashboardStats {
+  total_registrations: number;
+  todays_registrations: number;
+  branch_stats: Array<{ branch: string; count: number }>;
 }
 
 export interface Branch {
@@ -26,26 +47,6 @@ export interface Issuer {
   branchId: string;
   createdAt: string;
   active: boolean;
-  displayName?: string;
-}
-
-export interface AccountVerification {
-  accountNumber: string;
-  hasReceivedFreeStatement: boolean;
-  lastStatementDate?: string;
-  accountDetails?: {
-    fullName: string;
-    branch: string;
-    phoneNumber: string;
-  };
-}
-
-export interface User {
-  id: string;
-  username: string;
-  fullName: string;
-  role: 'admin' | 'issuer';
-  branch: string;
 }
 
 export interface ADUser {

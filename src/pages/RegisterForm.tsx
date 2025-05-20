@@ -1,68 +1,55 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, ArrowLeft, Upload } from 'lucide-react';
-import { useApp } from '../context/AppContext';
-import { Registrant } from '../types';
-import { generateId } from '../utils/idUtils';
+import { CheckCircle, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { registerAccount } from '../api/client';
 
 const RegisterForm: React.FC = () => {
-  const { addRegistrant, state } = useApp();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [submitted, setSubmitted] = useState(false);
-  const [statementFile, setStatementFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Get account details from location state
   const accountDetails = location.state?.accountDetails;
+  const accountNumber = location.state?.accountNumber;
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const fileType = file.type;
-      
-      // Check if file is an image or PDF
-      if (fileType.startsWith('image/') || fileType === 'application/pdf') {
-        setStatementFile(file);
-      } else {
-        alert('Please upload only image or PDF files');
-      }
-    }
-  };
-  
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!accountDetails) {
+    if (!accountDetails || !accountNumber || !user) {
+      setError('Invalid registration data');
       return;
     }
 
-    const newRegistrant: Registrant = {
-      id: generateId(),
-      accountNumber: location.state?.accountNumber,
-      fullName: accountDetails.fullName,
-      phoneNumber: accountDetails.phoneNumber,
-      email: '',
-      idNumber: '',
-      branch: accountDetails.branch,
-      statementPeriod: '3 months',
-      registrationDate: new Date().toISOString(), // Ensure proper date format
-      statementUrl: statementFile ? URL.createObjectURL(statementFile) : undefined,
-      issuedBy: 'Admin User'
-    };
-    
-    addRegistrant(newRegistrant);
-    setSubmitted(true);
-    
-    setTimeout(() => {
-      navigate('/');
-    }, 2000);
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      await registerAccount({
+        accountNumber,
+        fullName: accountDetails.fullName,
+        phoneNumber: accountDetails.phoneNumber
+      });
+      
+      setSubmitted(true);
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const handleCancel = () => {
     navigate('/');
   };
   
-  if (!accountDetails) {
+  if (!accountDetails || !accountNumber) {
     return (
       <div className="text-center py-12">
         <p className="text-red-600">No account details found. Please verify the account first.</p>
@@ -108,10 +95,16 @@ const RegisterForm: React.FC = () => {
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Register for Free Bank Statement</h2>
-          <p className="text-gray-600 mt-1">Confirm account details and optionally upload statement file</p>
+          <p className="text-gray-600 mt-1">Confirm account details to complete registration</p>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6">
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
           <div className="space-y-6">
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="grid grid-cols-2 gap-4">
@@ -121,54 +114,17 @@ const RegisterForm: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Account Number</p>
-                  <p className="text-sm font-medium text-gray-900">{location.state?.accountNumber}</p>
+                  <p className="text-sm font-medium text-gray-900">{accountNumber}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Branch</p>
-                  <p className="text-sm font-medium text-gray-900">{accountDetails.branch}</p>
+                  <p className="text-sm font-medium text-gray-900">{user?.branch}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Phone Number</p>
                   <p className="text-sm font-medium text-gray-900">{accountDetails.phoneNumber}</p>
                 </div>
               </div>
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Statement File (Optional)</label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                <div className="space-y-1 text-center">
-                  <Upload size={24} className="mx-auto text-gray-400" />
-                  <div className="flex text-sm text-gray-600">
-                    <label
-                      htmlFor="statement-file"
-                      className="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary-dark focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary"
-                    >
-                      <span>Upload a file</span>
-                      <input
-                        id="statement-file"
-                        name="statement-file"
-                        type="file"
-                        className="sr-only"
-                        accept="image/*,.pdf"
-                        onChange={handleFileChange}
-                      />
-                    </label>
-                    <p className="pl-1">or drag and drop</p>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Images (PNG, JPG, GIF) or PDF up to 10MB
-                  </p>
-                </div>
-              </div>
-              {statementFile && (
-                <div className="mt-2">
-                  <p className="text-sm text-gray-600 flex items-center">
-                    <CheckCircle size={16} className="text-green-500 mr-2" />
-                    Selected file: {statementFile.name}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
           
@@ -184,9 +140,9 @@ const RegisterForm: React.FC = () => {
               <button
                 type="submit"
                 className="btn-primary"
-                disabled={state.isLoading}
+                disabled={isLoading}
               >
-                {state.isLoading ? 'Registering...' : 'Register Account'}
+                {isLoading ? 'Registering...' : 'Confirm Registration'}
               </button>
             </div>
           </div>

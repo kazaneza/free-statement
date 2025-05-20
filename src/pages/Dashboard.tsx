@@ -17,9 +17,8 @@ const Dashboard: React.FC = () => {
   
   // Dashboard states
   const [stats, setStats] = useState<{
-    total_accounts: number;
-    total_issued: number;
-    total_remaining: number;
+    total_registrations: number;
+    todays_registrations: number;
     branch_stats: Array<{ branch: string; count: number }>;
   } | null>(null);
   const [registrations, setRegistrations] = useState<typeof state.registrants>([]);
@@ -280,7 +279,7 @@ const Dashboard: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-500">Total Accounts</p>
               <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                {stats?.total_accounts.toLocaleString() || '0'}
+                {stats?.total_registrations.toLocaleString() || '0'}
               </h3>
             </div>
             <div className="p-3 bg-primary/10 rounded-xl">
@@ -292,9 +291,9 @@ const Dashboard: React.FC = () => {
         <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Issued Statements</p>
+              <p className="text-sm font-medium text-gray-500">Today's Registrations</p>
               <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                {stats?.total_issued.toLocaleString() || '0'}
+                {stats?.todays_registrations.toLocaleString() || '0'}
               </h3>
             </div>
             <div className="p-3 bg-success/10 rounded-xl">
@@ -306,9 +305,9 @@ const Dashboard: React.FC = () => {
         <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Remaining Statements</p>
+              <p className="text-sm font-medium text-gray-500">Branch Stats</p>
               <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                {stats?.total_remaining.toLocaleString() || '0'}
+                {stats?.branch_stats.length || '0'}
               </h3>
             </div>
             <div className="p-3 bg-warning/10 rounded-xl">

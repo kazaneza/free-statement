@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-jose
+python-multipart
+pyodbc
+ldap3
+python-dotenv
+pydantic
+pydantic-settings

@@ -7,7 +7,7 @@ import DashboardStats from '../components/dashboard/DashboardStats';
 import DashboardTable from '../components/dashboard/DashboardTable';
 
 const Dashboard: React.FC = () => {
-  const { state, deleteRegistrant, verifyAccount } = useApp();
+  const { state, verifyAccount } = useApp();
   const navigate = useNavigate();
   
   // Dashboard states
@@ -100,21 +100,6 @@ const Dashboard: React.FC = () => {
       });
     }
   };
-  
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this record?')) {
-      try {
-        await deleteRegistrant(id);
-        setRegistrations(prev => prev.filter(r => r.id !== id));
-      } catch (err: any) {
-        setError(err.message);
-      }
-    }
-  };
-
-  const handleUploadStatement = (id: string) => {
-    console.log('Upload statement for:', id);
-  };
 
   if (isLoading) {
     return (
@@ -187,16 +172,6 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                
-                {verificationResult.registrant.statementUrl && (
-                  <div className="mt-4">
-                    <img 
-                      src={verificationResult.registrant.statementUrl} 
-                      alt="Statement Preview" 
-                      className="w-full h-48 object-cover rounded-xl"
-                    />
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -263,8 +238,6 @@ const Dashboard: React.FC = () => {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onPageChange={setCurrentPage}
-        onDelete={handleDelete}
-        onUpload={handleUploadStatement}
       />
     </div>
   );

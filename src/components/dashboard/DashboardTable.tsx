@@ -1,7 +1,8 @@
 import React from 'react';
-import { Download, Upload, Trash, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Download, Search } from 'lucide-react';
 import { formatDate } from '../../utils/dateUtils';
 import { Registrant } from '../../types';
+import { useAuth } from '../../context/AuthContext';
 
 interface DashboardTableProps {
   registrations: Registrant[];
@@ -10,8 +11,6 @@ interface DashboardTableProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
   onPageChange: (page: number) => void;
-  onDelete: (id: string) => void;
-  onUpload: (id: string) => void;
 }
 
 const DashboardTable: React.FC<DashboardTableProps> = ({
@@ -21,9 +20,9 @@ const DashboardTable: React.FC<DashboardTableProps> = ({
   searchTerm,
   onSearchChange,
   onPageChange,
-  onDelete,
-  onUpload
 }) => {
+  const { user } = useAuth();
+  
   const filteredRegistrations = registrations.filter(r => 
     (r.accountNumber?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (r.fullName?.toLowerCase() || '').includes(searchTerm.toLowerCase())
@@ -79,12 +78,6 @@ const DashboardTable: React.FC<DashboardTableProps> = ({
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Issued By
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Preview
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -114,58 +107,17 @@ const DashboardTable: React.FC<DashboardTableProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-3 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
-                      {registrant.branch}
+                      {user?.branch || 'Head Office'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {registrant.issuedBy}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {registrant.statementUrl ? (
-                      <img 
-                        src={registrant.statementUrl} 
-                        alt="Statement Preview" 
-                        className="h-12 w-16 object-cover rounded-lg"
-                      />
-                    ) : (
-                      <span className="text-sm text-gray-500">No preview</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-3">
-                      {registrant.statementUrl ? (
-                        <a 
-                          href={registrant.statementUrl}
-                          className="text-primary hover:text-primary-dark flex items-center"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Download size={16} className="mr-1" />
-                          Download
-                        </a>
-                      ) : (
-                        <button
-                          onClick={() => onUpload(registrant.id)}
-                          className="text-warning hover:text-warning/80 flex items-center"
-                        >
-                          <Upload size={16} className="mr-1" />
-                          Upload
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => onDelete(registrant.id)}
-                        className="text-red-600 hover:text-red-900 flex items-center"
-                      >
-                        <Trash size={16} className="mr-1" />
-                        Delete
-                      </button>
-                    </div>
+                    {user?.fullName || 'Admin User'}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
                   No records found. {searchTerm && 'Try a different search term.'}
                 </td>
               </tr>
@@ -176,63 +128,14 @@ const DashboardTable: React.FC<DashboardTableProps> = ({
 
       {filteredRegistrations.length > 0 && (
         <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200">
-          <div className="flex-1 flex justify-between sm:hidden">
-            <button
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="btn-secondary rounded-lg"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="btn-secondary rounded-lg"
-            >
-              Next
-            </button>
-          </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{indexOfFirstRecord + 1}</span> to{' '}
-                <span className="font-medium">
-                  {Math.min(indexOfLastRecord, filteredRegistrations.length)}
-                </span>{' '}
-                of <span className="font-medium">{filteredRegistrations.length}</span> results
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px overflow-hidden">
-                <button
-                  onClick={() => onPageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                {[...Array(totalPages)].map((_, index) => (
-                  <button
-                    key={index + 1}
-                    onClick={() => onPageChange(index + 1)}
-                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                      currentPage === index + 1
-                        ? 'z-10 bg-primary border-primary text-white'
-                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-                <button
-                  onClick={() => onPageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </nav>
-            </div>
+          <div>
+            <p className="text-sm text-gray-700">
+              Showing <span className="font-medium">{indexOfFirstRecord + 1}</span> to{' '}
+              <span className="font-medium">
+                {Math.min(indexOfLastRecord, filteredRegistrations.length)}
+              </span>{' '}
+              of <span className="font-medium">{filteredRegistrations.length}</span> results
+            </p>
           </div>
         </div>
       )}

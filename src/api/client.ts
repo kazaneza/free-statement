@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { formatDateForSQL, isValidDate } from '../utils/dateUtils';
-import { Branch, Issuer, ADUser, Registrant } from '../types';
+import { ADUser, Registrant } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -124,32 +124,15 @@ export const getRegistrations = async () => {
   }
 };
 
-// Get all branches
-export const getBranches = async () => {
+// Get AD users
+export const getADUsers = async (searchTerm?: string): Promise<ADUser[]> => {
   try {
-    const response = await api.get('/api/branches/');
+    const response = await api.get('/api/issuers/ad-users', {
+      params: searchTerm ? { search: searchTerm } : undefined
+    });
     return response.data;
   } catch (error: any) {
-    throw new Error(error.response?.data?.detail || 'Failed to fetch branches');
-  }
-};
-
-// Create a new branch
-export const createBranch = async (branch: Branch) => {
-  try {
-    const response = await api.post('/api/branches/', branch);
-    return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.detail || 'Failed to create branch');
-  }
-};
-
-// Delete a branch
-export const deleteBranch = async (id: string) => {
-  try {
-    await api.delete(`/api/branches/${id}`);
-  } catch (error: any) {
-    throw new Error(error.response?.data?.detail || 'Failed to delete branch');
+    throw new Error(error.response?.data?.detail || 'Failed to fetch AD users');
   }
 };
 

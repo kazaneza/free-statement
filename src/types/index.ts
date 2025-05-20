@@ -34,21 +34,6 @@ export interface DashboardStats {
   branch_stats: Array<{ branch: string; count: number }>;
 }
 
-export interface Branch {
-  id: string;
-  code: string;
-  name: string;
-  createdAt: string;
-}
-
-export interface Issuer {
-  id: string;
-  name: string;
-  branchId: string;
-  createdAt: string;
-  active: boolean;
-}
-
 export interface ADUser {
   username: string;
   displayName: string;

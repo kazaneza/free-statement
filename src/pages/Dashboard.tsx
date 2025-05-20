@@ -7,7 +7,7 @@ import DashboardStats from '../components/dashboard/DashboardStats';
 import DashboardTable from '../components/dashboard/DashboardTable';
 
 const Dashboard: React.FC = () => {
-  const { state, verifyAccount } = useApp();
+  const { state, verifyAccount, setRegistrants } = useApp();
   const navigate = useNavigate();
   
   // Dashboard states
@@ -16,7 +16,6 @@ const Dashboard: React.FC = () => {
     todays_registrations: number;
     branch_stats: Array<{ branch: string; count: number }>;
   } | null>(null);
-  const [registrations, setRegistrations] = useState<typeof state.registrants>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -29,7 +28,7 @@ const Dashboard: React.FC = () => {
   const [verificationResult, setVerificationResult] = useState<{
     isEligible?: boolean;
     message?: string;
-    registrant?: typeof state.registrants[0];
+    registrant?: any;
   } | null>(null);
   const [showModal, setShowModal] = useState(false);
   
@@ -43,10 +42,10 @@ const Dashboard: React.FC = () => {
       try {
         const [statsData, registrationsData] = await Promise.all([
           getDashboardStats(),
-          getRegistrations()
+          getRegistrations(true) // Only get issued statements
         ]);
         setStats(statsData);
-        setRegistrations(registrationsData);
+        setRegistrants(registrationsData);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -55,7 +54,7 @@ const Dashboard: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [setRegistrants]);
   
   const handleAccountVerification = async () => {
     if (!accountNumber.trim()) {
@@ -69,13 +68,20 @@ const Dashboard: React.FC = () => {
     try {
       const result = await verifyAccount(accountNumber);
       
-      const existingRegistrant = registrations.find(r => r.accountNumber === accountNumber);
-      
-      if (existingRegistrant) {
+      if (result.isRegistered) {
         setVerificationResult({
           isEligible: false,
           message: 'Account has already received a free statement',
-          registrant: existingRegistrant
+          registrant: {
+            id: '',
+            accountNumber: result.accountNumber,
+            fullName: result.accountDetails?.fullName || '',
+            phoneNumber: result.accountDetails?.phoneNumber || '',
+            registrationDate: result.registrationDate || '',
+            issuedBy: '',
+            branch: '',
+            isIssued: false
+          }
         });
         setShowModal(true);
       } else {
@@ -155,19 +161,13 @@ const Dashboard: React.FC = () => {
                     <div>
                       <p className="text-sm text-gray-500">Branch</p>
                       <p className="text-sm font-medium text-gray-900">
-                        {verificationResult.registrant.branch}
+                        {verificationResult.registrant.branch || 'Head Office'}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Issue Date</p>
+                      <p className="text-sm text-gray-500">Registration Date</p>
                       <p className="text-sm font-medium text-gray-900">
                         {verificationResult.registrant.registrationDate}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Issued By</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {verificationResult.registrant.issuedBy}
                       </p>
                     </div>
                   </div>
@@ -190,7 +190,7 @@ const Dashboard: React.FC = () => {
                 <input
                   type="text"
                   placeholder="Enter account number"
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="w-full px-4 py-3 pl-10 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/30"
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleAccountVerification()}
@@ -232,7 +232,7 @@ const Dashboard: React.FC = () => {
 
       {/* Statement Records */}
       <DashboardTable
-        registrations={registrations}
+        registrations={state.registrants}
         currentPage={currentPage}
         recordsPerPage={recordsPerPage}
         searchTerm={searchTerm}

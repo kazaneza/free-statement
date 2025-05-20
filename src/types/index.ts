@@ -8,7 +8,10 @@ export interface Registrant {
   registrationDate: string;
   issuedBy: string;
   branch: string;
-  hasStatement: number; // 0 = no statement, 1 = has statement
+  isIssued: boolean; // Changed from hasStatement
+  statementUrl?: string; // Optional property present in some places
+  statementPeriod?: string; // Optional property present in mockData
+  notes?: string; // Optional property present in mockData
 }
 
 export interface AccountVerification {
@@ -40,4 +43,11 @@ export interface ADUser {
   displayName: string;
   email?: string;
   department?: string;
+}
+
+export interface Branch {
+  id: string;
+  code: string;
+  name: string;
+  createdAt: string;
 }

@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Optional  
 from ..database import get_db_connection
 from ..models import RegistrationCreate, RegistrationResponse
 from ..auth import get_current_user
@@ -162,19 +162,58 @@ async def get_registration_stats(current_user: str = Depends(get_current_user)):
         cursor.close()
         conn.close()
 
-@router.get("/", response_model=List[RegistrationResponse])
-async def get_registrations(current_user: str = Depends(get_current_user)):
+@router.put("/{registration_id}/issue")
+async def mark_as_issued(
+    registration_id: str,
+    current_user: str = Depends(get_current_user)
+):
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
         cursor.execute("""
+            UPDATE registrations 
+            SET is_issued = 1 
+            WHERE id = ?
+        """, registration_id)
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Registration not found")
+            
+        conn.commit()
+        return {"message": "Statement marked as issued successfully"}
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error marking registration as issued: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+# Also update the get_registrations endpoint to include filtering by issued status
+@router.get("/", response_model=List[RegistrationResponse])
+async def get_registrations(
+    current_user: str = Depends(get_current_user),
+    issued_only: bool = Query(False, description="Filter by issued statements only")
+):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        query = """
             SELECT id, account_number, full_name, phone_number,
                    email, id_number, registration_date, created_at,
-                   issued_by
+                   issued_by, is_issued
             FROM registrations
-            ORDER BY registration_date DESC
-        """)
+        """
+        
+        # Add filter if requested
+        if issued_only:
+            query += " WHERE is_issued = 1"
+            
+        query += " ORDER BY registration_date DESC"
+        
+        cursor.execute(query)
         
         registrations = []
         for row in cursor.fetchall():
@@ -187,7 +226,8 @@ async def get_registrations(current_user: str = Depends(get_current_user)):
                 id_number=row[5],
                 registration_date=row[6],
                 created_at=row[7],
-                issued_by=row[8] if row[8] is not None else ""
+                issued_by=row[8] if row[8] is not None else "",
+                is_issued=bool(row[9]) if len(row) > 9 else False
             ))
         return registrations
     finally:

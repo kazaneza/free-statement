@@ -97,10 +97,37 @@ export const registerAccount = async (registrationData: {
   idNumber?: string;
 }): Promise<Registrant> => {
   try {
-    const response = await api.post('/api/registrations/', registrationData);
-    return response.data;
+    const response = await api.post('/api/registrations/', {
+      account_number: registrationData.accountNumber,
+      full_name: registrationData.fullName,
+      phone_number: registrationData.phoneNumber,
+      email: registrationData.email,
+      id_number: registrationData.idNumber
+    });
+
+    return {
+      id: response.data.id,
+      accountNumber: response.data.account_number,
+      fullName: response.data.full_name,
+      phoneNumber: response.data.phone_number,
+      email: response.data.email,
+      idNumber: response.data.id_number,
+      registrationDate: response.data.registration_date,
+      issuedBy: response.data.issued_by,
+      branch: 'Head Office',
+      isIssued: response.data.is_issued || false
+    };
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to register account');
+  }
+};
+
+// Mark a registration as issued
+export const markRegistrationAsIssued = async (registrationId: string): Promise<void> => {
+  try {
+    await api.put(`/api/registrations/${registrationId}/issue`);
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to mark registration as issued');
   }
 };
 
@@ -115,10 +142,23 @@ export const getDashboardStats = async () => {
 };
 
 // Get all registrations
-export const getRegistrations = async (): Promise<Registrant[]> => {
+export const getRegistrations = async (issuedOnly: boolean = true): Promise<Registrant[]> => {
   try {
-    const response = await api.get('/api/registrations/');
-    return response.data;
+    const response = await api.get('/api/registrations/', {
+      params: { issued_only: issuedOnly }
+    });
+    return response.data.map((reg: any) => ({
+      id: reg.id,
+      accountNumber: reg.account_number,
+      fullName: reg.full_name,
+      phoneNumber: reg.phone_number,
+      email: reg.email,
+      idNumber: reg.id_number,
+      registrationDate: reg.registration_date,
+      issuedBy: reg.issued_by,
+      branch: 'Head Office',
+      isIssued: reg.is_issued || false
+    }));
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to fetch registrations');
   }
@@ -134,6 +174,21 @@ export const getADUsers = async (searchTerm?: string): Promise<ADUser[]> => {
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to fetch AD users');
   }
+};
+
+// Create bulk registrations (stub function)
+export const createBulkRegistrations = async (
+  data: any[], 
+  branch: string, 
+  issuer: string
+): Promise<{success: number; failed: number; errors: string[]}> => {
+  // This is a stub function that would normally make an API call
+  // In a real app, this would call an endpoint like '/api/registrations/bulk'
+  return {
+    success: 2,
+    failed: 0,
+    errors: []
+  };
 };
 
 export default api;

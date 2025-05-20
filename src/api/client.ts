@@ -124,4 +124,33 @@ export const getRegistrations = async () => {
   }
 };
 
+// Get all branches
+export const getBranches = async () => {
+  try {
+    const response = await api.get('/api/branches/');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to fetch branches');
+  }
+};
+
+// Create a new branch
+export const createBranch = async (branch: Branch) => {
+  try {
+    const response = await api.post('/api/branches/', branch);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to create branch');
+  }
+};
+
+// Delete a branch
+export const deleteBranch = async (id: string) => {
+  try {
+    await api.delete(`/api/branches/${id}`);
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to delete branch');
+  }
+};
+
 export default api;

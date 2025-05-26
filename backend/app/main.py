@@ -20,7 +20,7 @@ async def startup_event():
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    llow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,3 +49,5 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 @app.get("/")
 async def root():
     return {"message": "Bank Statement Registration API"}
+
+# python -m uvicorn app.main:app --host 0.0.0.0 --port 9000

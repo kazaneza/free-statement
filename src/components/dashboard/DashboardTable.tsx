@@ -3,6 +3,7 @@ import { Download, Search } from 'lucide-react';
 import { formatDate } from '../../utils/dateUtils';
 import { Registrant } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import * as XLSX from 'xlsx';
 
 interface DashboardTableProps {
   registrations: Registrant[];
@@ -33,6 +34,24 @@ const DashboardTable: React.FC<DashboardTableProps> = ({
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
   const currentRecords = filteredRegistrations.slice(indexOfFirstRecord, indexOfLastRecord);
 
+  const handleExport = () => {
+    // Export all issued registrations, not just current page
+    const exportData = registrations.map(reg => ({
+      'Account Number': reg.accountNumber,
+      'Full Name': reg.fullName,
+      'Phone Number': reg.phoneNumber,
+      'Issue Date': formatDate(reg.registrationDate),
+      'Branch': reg.branch,
+      'Issued By': reg.issuedBy,
+      'Status': reg.isIssued ? 'Issued' : 'Pending'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Issued Statements');
+    XLSX.writeFile(workbook, 'issued_statements.xlsx');
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
       <div className="p-6 border-b border-gray-200">
@@ -51,7 +70,10 @@ const DashboardTable: React.FC<DashboardTableProps> = ({
                 <Search size={16} className="text-gray-400" />
               </div>
             </div>
-            <button className="mt-2 sm:mt-0 btn-secondary text-sm py-2 flex items-center rounded-lg">
+            <button
+              className="mt-2 sm:mt-0 btn-secondary text-sm py-2 flex items-center rounded-lg"
+              onClick={handleExport}
+            >
               <Download size={16} className="mr-1" />
               Export Records
             </button>

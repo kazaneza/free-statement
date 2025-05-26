@@ -133,8 +133,11 @@ const Dashboard: React.FC = () => {
     );
   }
   
-  // Filter only issued registrations
-  const issuedRegistrations = state.registrants.filter(r => r.isIssued);
+  // Filter and sort only issued registrations, then take the last 10
+  const issuedRegistrations = state.registrants
+    .filter(r => r.isIssued)
+    .sort((a, b) => new Date(b.registrationDate).getTime() - new Date(a.registrationDate).getTime())
+    .slice(0, 10);
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -268,8 +271,8 @@ const Dashboard: React.FC = () => {
       {/* Statement Records */}
       <DashboardTable
         registrations={issuedRegistrations}
-        currentPage={currentPage}
-        recordsPerPage={recordsPerPage}
+        currentPage={1} // Always show first page since only 10 records
+        recordsPerPage={10}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onPageChange={setCurrentPage}

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { formatDateForSQL, isValidDate } from '../utils/dateUtils';
 import { ADUser, Registrant, AccountVerification } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000';
 
 const api = axios.create({
   baseURL: API_URL,
